@@ -38,8 +38,7 @@ use TYPO3\CMS\Core\Localization\LanguageService;
  *
  * @author Arno Dudek <webmaster@adgrafik.at>
  */
-class LayoutSetup
-{
+class LayoutSetup {
 
     /**
      * @var DefaultRestrictionContainer
@@ -604,17 +603,31 @@ class LayoutSetup
             }
 
             $wizardItems[] = [
-                'uid'            => $layoutId,
-                'title'          => $this->languageService->sL($item['title']),
-                'description'    => $this->languageService->sL($item['description']),
-                'icon'           => $item['icon'],
-                'iconIdentifier' => $item['iconIdentifier'],
-                'tll'            => $item['top_level_layout'],
+                'uid'                  => $layoutId,
+                'title'                => $this->languageService->sL($item['title']),
+                'description'          => $this->languageService->sL($item['description']),
+                'icon'                 => $item['icon'],
+                'iconIdentifier'       => $item['iconIdentifier'],
+                'tll'                  => $item['top_level_layout'],
+                'customWizardTab'      => $item['customWizardTab'],
                 'tt_content_defValues' => $item['tt_content_defValues.'],
             ];
         }
 
         return $wizardItems;
+    }
+
+    /**
+     * @param int $pageId
+     * @return array
+     */
+    public function getLayoutWizardCustomTabs($pageId = 0)
+    {
+        $pageTSconfig = BackendUtility::getPagesTSconfig($pageId);
+        $wizardCustomTabs = !empty($pageTSconfig['tx_gridelements.']['newContentElementWizardCustomTabs.']) && is_array($pageTSconfig['tx_gridelements.']['newContentElementWizardCustomTabs.'])
+            ? $pageTSconfig['tx_gridelements.']['newContentElementWizardCustomTabs.']
+            : [];
+        return $wizardCustomTabs;
     }
 
     /**

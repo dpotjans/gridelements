@@ -111,13 +111,15 @@ class WizardItems implements NewContentElementWizardHookInterface
             $disallowedGridTypes = $disallowed['tx_gridelements_backend_layout'] ?: [];
             $excludeLayouts = $this->getExcludeLayouts($container, $parentObject);
 
+            $wizardCustomTabs = $this->layoutSetup->getLayoutWizardCustomTabs($pageID);
+
             $gridItems = $this->layoutSetup->getLayoutWizardItems(
                 $parentObject->colPos,
                 $excludeLayouts,
                 $allowedGridTypes,
                 $disallowedGridTypes
             );
-            $this->addGridItemsToWizard($gridItems, $wizardItems);
+            $this->addGridItemsToWizard($gridItems, $wizardItems, $wizardCustomTabs);
         }
 
         $this->addGridValuesToWizardItems($wizardItems, $container, $column);
@@ -225,19 +227,34 @@ class WizardItems implements NewContentElementWizardHookInterface
      *
      * @param array $gridItems
      * @param array $wizardItems
+     * @param array $wizardCustomTabs
      */
-    public function addGridItemsToWizard(array &$gridItems, array &$wizardItems)
+    public function addGridItemsToWizard(array &$gridItems, array &$wizardItems, array $wizardCustomTabs)
     {
         if (empty($gridItems)) {
             return;
         }
+        $newWizardItems = [];
         // create gridelements node
-        $wizardItems['gridelements'] = [];
+        $newWizardItems['gridelements'] = [];
 
         // set header label
-        $wizardItems['gridelements']['header'] = $this->getLanguageService()->sL(
+        $newWizardItems['gridelements']['header'] = $this->getLanguageService()->sL(
             'LLL:EXT:gridelements/Resources/Private/Language/locallang_db.xml:tx_gridelements_backend_layout_wizard_label'
         );
+
+        $newWizardItems['gridelements']['sorting'] = 0;
+
+        if (!empty($wizardCustomTabs)) {
+            $customTabSorting = 1;
+            foreach ($wizardCustomTabs as $wizardCustomTab => $wizardCustomTabLabel) {
+                $itemKey = 'gridelements-' . $wizardCustomTab;
+                $wizardItems[$itemKey] = [];
+                $newWizardItems[$itemKey]['header'] = $wizardCustomTabLabel;
+                $newWizardItems[$itemKey]['sorting'] = $customTabSorting;
+                $customTabSorting++;
+            }
+        }
 
         $iconRegistry = GeneralUtility::makeInstance(IconRegistry::class);
 
@@ -296,7 +313,9 @@ class WizardItems implements NewContentElementWizardHookInterface
             }
 
             $itemIdentifier = $item['alias'] ? $item['alias'] : $item['uid'];
-            $wizardItems['gridelements_' . $itemIdentifier] = [
+            $itemKey = ($item['customWizardTab'] && isset($newWizardItems['gridelements-' . $item['customWizardTab']])) ? 'gridelements-' . $item['customWizardTab'] : 'gridelements';
+            $wizardTab = $itemKey . '_';
+            $newWizardItems[$wizardTab . $itemIdentifier] = [
                 'title'                => $item['title'],
                 'description'          => $item['description'],
                 'params'               => ($largeIcon ? '&largeIconImage=' . $largeIcon : '')
@@ -306,10 +325,11 @@ class WizardItems implements NewContentElementWizardHookInterface
                     'CType'                          => 'gridelements_pi1',
                     'tx_gridelements_backend_layout' => $item['uid'],
                 ],
+                'sorting' => $newWizardItems[$itemKey]['sorting']
             ];
             $icon = '';
             if ($item['iconIdentifier']) {
-                $wizardItems['gridelements_' . $itemIdentifier]['iconIdentifier'] = $item['iconIdentifier'];
+                $newWizardItems[$wizardTab . $itemIdentifier]['iconIdentifier'] = $item['iconIdentifier'];
             } elseif (is_array($item['icon']) && isset($item['icon'][0])) {
                 $item['iconIdentifier'] = 'gridelements-' . $key;
                 $icon = $item['icon'][0];
@@ -338,14 +358,18 @@ class WizardItems implements NewContentElementWizardHookInterface
                     'source' => 'EXT:gridelements/Resources/Public/Icons/gridelements.svg',
                 ]);
             }
-            if ($icon && !isset($wizardItems['gridelements_' . $itemIdentifier]['iconIdentifier'])) {
-                $wizardItems['gridelements_' . $itemIdentifier]['iconIdentifier'] = 'gridelements-' . $key;
+            if ($icon && !isset($newWizardItems[$wizardTab . $itemIdentifier]['iconIdentifier'])) {
+                $newWizardItems[$wizardTab . $itemIdentifier]['iconIdentifier'] = 'gridelements-' . $key;
             } else {
-                if (!isset($wizardItems['gridelements_' . $itemIdentifier]['iconIdentifier'])) {
-                    $wizardItems['gridelements_' . $itemIdentifier]['iconIdentifier'] = 'gridelements-default';
+                if (!isset($newWizardItems[$wizardTab . $itemIdentifier]['iconIdentifier'])) {
+                    $newWizardItems[$wizardTab . $itemIdentifier]['iconIdentifier'] = 'gridelements-default';
                 }
             }
         }
+        uasort($newWizardItems, function($a, $b) {
+            return $a['sorting'] <=> $b['sorting'];
+        });
+        $wizardItems = array_merge($wizardItems, $newWizardItems);
     }
 
     /**
