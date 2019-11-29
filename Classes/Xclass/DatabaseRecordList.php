@@ -703,7 +703,6 @@ class DatabaseRecordList extends \TYPO3\CMS\Recordlist\RecordList\DatabaseRecord
             }
         }
         if ($GLOBALS['TCA'][$table]['ctrl']['versioningWS']) {
-            $selectFields[] = 't3ver_id';
             $selectFields[] = 't3ver_state';
             $selectFields[] = 't3ver_wsid';
         }
@@ -2127,7 +2126,7 @@ class DatabaseRecordList extends \TYPO3\CMS\Recordlist\RecordList\DatabaseRecord
      * @param string $table
      * @return bool
      */
-    public function isEditable($table)
+    public function isEditable(string $table): bool
     {
         return $GLOBALS['TCA'][$table]['ctrl']['readOnly'] || $this->editable;
     }

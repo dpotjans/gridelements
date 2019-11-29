@@ -168,10 +168,6 @@ abstract class AbstractDataHandler
                 $queryBuilder->expr()->eq(
                     't3ver_wsid',
                     $queryBuilder->createNamedParameter(0, \PDO::PARAM_INT)
-                ),
-                $queryBuilder->expr()->gt(
-                    't3ver_id',
-                    $queryBuilder->createNamedParameter(0, \PDO::PARAM_INT)
                 )
             ),
         ];
@@ -251,15 +247,17 @@ abstract class AbstractDataHandler
                 ->execute()
                 ->fetch();
 
-            $updateArray = $currentValues;
-            unset($updateArray['uid']);
-            unset($updateArray['sys_language_uid']);
-            unset($updateArray['l18n_parent']);
-            $this->getConnection()->update(
-                'tt_content',
-                $updateArray,
-                ['uid' => (int)$originalUid]
-            );
+            if (is_array($currentValues)) {
+                $updateArray = $currentValues;
+                unset($updateArray['uid']);
+                unset($updateArray['sys_language_uid']);
+                unset($updateArray['l18n_parent']);
+                $this->getConnection()->update(
+                    'tt_content',
+                    $updateArray,
+                    ['uid' => (int)$originalUid]
+                );
+            }
         }
         if (empty($currentValues['uid'])) {
             return;

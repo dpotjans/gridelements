@@ -38,7 +38,6 @@ use TYPO3\CMS\Core\Database\Query\Restriction\EndTimeRestriction;
 use TYPO3\CMS\Core\Database\Query\Restriction\HiddenRestriction;
 use TYPO3\CMS\Core\Database\Query\Restriction\StartTimeRestriction;
 use TYPO3\CMS\Core\Database\QueryGenerator;
-use TYPO3\CMS\Core\Database\ReferenceIndex;
 use TYPO3\CMS\Core\Imaging\Icon;
 use TYPO3\CMS\Core\Imaging\IconFactory;
 use TYPO3\CMS\Core\Messaging\FlashMessage;
@@ -162,9 +161,6 @@ class DrawItem implements PageLayoutViewDrawItemHookInterface, SingletonInterfac
                 case 'gridelements_pi1':
                     $drawItem = false;
                     $itemContent .= $this->renderCTypeGridelements($parentObject, $row);
-                    $refIndexObj = GeneralUtility::makeInstance(ReferenceIndex::class);
-                    /* @var $refIndexObj \TYPO3\CMS\Core\Database\ReferenceIndex */
-                    $refIndexObj->updateRefIndexTable('tt_content', (int)$row['uid']);
                     break;
                 case 'shortcut':
                     $drawItem = false;
@@ -567,11 +563,7 @@ class DrawItem implements PageLayoutViewDrawItemHookInterface, SingletonInterfac
         $maxItems = (int)$values['maxitems'];
         $url = '';
         $pageinfo = BackendUtility::readPageAccess($parentObject->id, '');
-        if (!empty($this->getPageLayoutController()) && get_class($this->getPageLayoutController()) === PageLayoutController::class) {
-            $contentIsNotLockedForEditors = $this->getPageLayoutController()->contentIsNotLockedForEditors();
-        } else {
-            $contentIsNotLockedForEditors = true;
-        }
+        $contentIsNotLockedForEditors = $this->contentIsNotLockedForEditors($parentObject->id);
         if ($colPos < 32768) {
             if ($contentIsNotLockedForEditors
                 && $this->getBackendUser()->doesUserHaveAccess($pageinfo, Permission::CONTENT_EDIT)
@@ -1435,5 +1427,37 @@ class DrawItem implements PageLayoutViewDrawItemHookInterface, SingletonInterfac
     public function getIconFactory()
     {
         return $this->iconFactory;
+    }
+
+    /**
+     * Check if content can be edited by current user
+     *
+     * @param array $pageinfo
+     * @return bool
+     */
+    protected function isContentEditable(array $pageinfo): bool
+    {
+        if ($this->getBackendUser()->isAdmin()) {
+            return true;
+        }
+        return !$pageinfo['editlock'] && $this->getBackendUser()->doesUserHaveAccess($pageinfo, Permission::CONTENT_EDIT);
+    }
+
+    /**
+     * Check if content can be edited by current user
+     *
+     * @param integer $id
+     * @return bool
+     */
+    protected function contentIsNotLockedForEditors($id): bool
+    {
+        if (!empty($this->getPageLayoutController()) && get_class($this->getPageLayoutController()) === PageLayoutController::class) {
+            $perms_clause = $this->getBackendUser()->getPagePermsClause(Permission::PAGE_SHOW);
+            $pageinfo = BackendUtility::readPageAccess($id, $perms_clause);
+
+            return $this->isContentEditable($pageinfo);
+        } else {
+            return true;
+        }
     }
 }
